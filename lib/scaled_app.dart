@@ -28,14 +28,53 @@ void runAppScaled(Widget app, {ScaleFactorCallback? scaleFactor}) {
 
 /// Adapted from [WidgetsFlutterBinding]
 ///
-class ScaledWidgetsFlutterBinding extends WidgetsFlutterBinding {
+class ScaledWidgetsFlutterBinding extends WidgetsFlutterBinding
+    with ScaledWidgetsFlutterBindingMixin {
+  static ScaledWidgetsFlutterBinding? _binding;
+
+  ScaledWidgetsFlutterBinding._({ScaleFactorCallback? scaleFactor}) {
+    _scaleFactor = scaleFactor;
+  }
+
+  /// Scaling will be applied based on [scaleFactor] callback.
+  ///
+  static WidgetsBinding ensureInitialized({ScaleFactorCallback? scaleFactor}) {
+    _binding ??= ScaledWidgetsFlutterBinding._(scaleFactor: scaleFactor);
+    return _binding!;
+  }
+
+  static ScaledWidgetsFlutterBinding get instance => _binding!;
+}
+
+extension ScaledMediaQueryData on MediaQueryData {
+  /// Scale MediaQueryData accordingly,
+  /// so that widgets using [MediaQueryData.size],
+  /// [MediaQueryData.devicePixelRatio], [MediaQueryData.viewInsets],
+  /// [MediaQueryData.viewPadding], [MediaQueryData.padding]
+  /// can be laid out correctly.
+  ///
+  /// e.g. keyboard, appBar, navigationBar.
+  ///
+  MediaQueryData scale() {
+    final scale = (ScaledWidgetsFlutterBinding._binding?.scale ?? 1);
+    return copyWith(
+      size: size / scale,
+      devicePixelRatio: devicePixelRatio * scale,
+      viewInsets: viewInsets / scale,
+      viewPadding: viewPadding / scale,
+      padding: padding / scale,
+    );
+  }
+}
+
+mixin ScaledWidgetsFlutterBindingMixin on WidgetsFlutterBinding {
   /// Calculate scale factor from device size.
   ScaleFactorCallback? _scaleFactor;
 
-  ScaledWidgetsFlutterBinding._({ScaleFactorCallback? scaleFactor})
-      : _scaleFactor = scaleFactor;
+  ScaleFactorCallback get scaleFactor =>
+      _scaleFactor ?? defaultScaleFactorCallback;
 
-  ScaleFactorCallback get scaleFactor => _scaleFactor ?? (_) => 1.0;
+  double defaultScaleFactorCallback(Size size) => 1.0;
 
   /// Update scaleFactor callback, then rebuild layout
   set scaleFactor(ScaleFactorCallback? callback) {
@@ -53,17 +92,6 @@ class ScaledWidgetsFlutterBinding extends WidgetsFlutterBinding {
   double devicePixelRatioScaled = 0;
 
   bool get isScaling => scale != 1.0;
-
-  static ScaledWidgetsFlutterBinding? _binding;
-
-  /// Scaling will be applied based on [scaleFactor] callback.
-  ///
-  static WidgetsBinding ensureInitialized({ScaleFactorCallback? scaleFactor}) {
-    _binding ??= ScaledWidgetsFlutterBinding._(scaleFactor: scaleFactor);
-    return _binding!;
-  }
-
-  static ScaledWidgetsFlutterBinding get instance => _binding!;
 
   /// Override the method from [RendererBinding.createViewConfiguration] to
   /// change what size or device pixel ratio the [RenderView] will use.
@@ -157,26 +185,5 @@ class ScaledWidgetsFlutterBinding extends WidgetsFlutterBinding {
     while (_pendingPointerEvents.isNotEmpty) {
       handlePointerEvent(_pendingPointerEvents.removeFirst());
     }
-  }
-}
-
-extension ScaledMediaQueryData on MediaQueryData {
-  /// Scale MediaQueryData accordingly,
-  /// so that widgets using [MediaQueryData.size],
-  /// [MediaQueryData.devicePixelRatio], [MediaQueryData.viewInsets],
-  /// [MediaQueryData.viewPadding], [MediaQueryData.padding]
-  /// can be laid out correctly.
-  ///
-  /// e.g. keyboard, appBar, navigationBar.
-  ///
-  MediaQueryData scale() {
-    final scale = (ScaledWidgetsFlutterBinding._binding?.scale ?? 1);
-    return copyWith(
-      size: size / scale,
-      devicePixelRatio: devicePixelRatio * scale,
-      viewInsets: viewInsets / scale,
-      viewPadding: viewPadding / scale,
-      padding: padding / scale,
-    );
   }
 }
